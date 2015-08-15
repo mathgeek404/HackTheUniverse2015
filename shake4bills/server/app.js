@@ -5,10 +5,12 @@ var blockchain = require('blockchain.info');
 var qs = require('querystring');
 var url = require('url');
 var mongoose = require("mongoose");
+var lat, lon, t, d;
 
 mongoose.connect('mongodb://localhost/test');
 
-var giveRecord = mongoose.model('coll_give', {lat: Number, lon: Number, time: Number}, 'coll_give');
+var giveRecord = mongoose.model('coll_give', {lat: Number, lon: Number, time: String}, 'coll_give');
+var getRecord = mongoose.model('coll_receive', {lat: Number, lon: Number, time: String}, 'coll_receive');
 
 // var transaction;
 
@@ -48,27 +50,47 @@ app.post("/give", function(req, res){
 	
 	req.on('end', function() {
 	    console.log(JSON.parse(body)); // request is finished receiving data, parse it
-		console.log(JSON.parse(body).lat);
-		console.log(JSON.parse(body).lon);
-		console.log(JSON.parse(body).time);
-		var d = new Date(0); // The 0 there is the key, which sets the date to the epoch
-		d.setUTCSeconds(JSON.parse(body).time / 1000);
-		console.log(d);
-
-		var newGiveRecord = new giveRecord({
-		"lat": JSON.parse(body).lat,
-		"lon": JSON.parse(body).lon,
-		"time": JSON.parse(body).time
+		lat = JSON.parse(body).lat;
+		lon = JSON.parse(body).lon;
+		t = JSON.parse(body).time;
+		d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+		d.setUTCSeconds(t / 1000);
+		//console.log(d);
+	var newGiveRecord = new giveRecord({
+		"lat": lat,
+		"lon": lon,
+		"time": t
 	});
 	newGiveRecord.save();
 	});
 
-	
-
-	//collection.insert(body, {w: 1}, function(err, records){
-  	//console.log("Record added as "+records[0]._id);
 });
 
+app.post("/receive", function(req, res){
+	
+	var body = ""; // request body
+
+	req.on('data', function(data) {
+	    body += data.toString(); // convert data to string and append it to request body
+	});
+	
+	req.on('end', function() {
+	    console.log(JSON.parse(body)); // request is finished receiving data, parse it
+		lat = JSON.parse(body).lat;
+		lon = JSON.parse(body).lon;
+		t = JSON.parse(body).time;
+		d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+		d.setUTCSeconds(t / 1000);
+		//console.log(d);
+	var newReceiveRecord = new getRecord({
+		"lat": lat,
+		"lon": lon,
+		"time": t
+	});
+	newReceiveRecord.save();
+	});
+
+});
 
 
 // app.post("/give", function(req, res){
