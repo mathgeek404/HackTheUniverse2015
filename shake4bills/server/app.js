@@ -113,6 +113,53 @@ app.post("/give", function(req, res){
 // 	}
 // }
 
+/*
+ * Welcome to JSApp.US
+ * ctrl-b to run the current code on the server
+ * ctrl-l to login/make a new user
+ * ctrl-h for help
+ *
+ * For more command check out the command window at the bottom
+ * commands: test login/logout newuser new save open ls deploy
+ */
+
+var mongojs = require('mongojs');
+var uri = "argofuckyourself:argofuckyourself@ds033153.mongolab.com:33153/helloworld"
+var db = mongojs(uri, ["coll_get","coll_give"]);
+
+
+//Every couple of minutes, checks the get/give requests and cross checks possible transactions
+def timerHandler() {
+  db.coll_give.find(function(err, give_docs) {
+      db.coll_get.find(function(err, get_docs) {
+          for (i=0;i<give_docs.length;i++) {
+            for (j=0;j<give_docs.length;j++) {
+                get = get_docs[i];
+                give = give_docs[j];
+                
+                if (Math.abs(parseInt(get["time"])-parseInt(give["time"]))<10) {  //Within timestep
+                if ((Math.abs(parseFloat(get["lat"])-parseFloat(give["lat"]))<1) &&
+                        Math.abs(parseFloat(get["long"])-parseFloat(give["long"]))<1) {  //Within range
+                    pass_payment(give,get);
+                    db.coll_get.remove(give, function(err,docs) {console.log(String(err));});
+                    db.coll_get.remove(get, function(err, docs) {console.log(String(err));});
+                }
+             } 
+            }
+          }
+
+      });
+  });  
+}
+var minutes = 5, the_interval = minutes * 60 * 1000;
+setInterval(timerHandler, the_interval);
+
+http.createServer(function (req, res) {
+  res.writeHead(200, {'Content-Type': 'text/plain'});
+  res.end('Hello World\n');
+}).listen();
+
+
 http.listen(80, function(){
 	console.log("Listening on *:80");
 });

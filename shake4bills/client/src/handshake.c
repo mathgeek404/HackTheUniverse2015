@@ -47,6 +47,10 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 void accel_data_handler(AccelData *data, uint32_t num_samples) {
   // Process 10 events - every 1 second
  
+  if (data->did_vibrate) {   
+      return;
+  }
+    
   APP_LOG(APP_LOG_LEVEL_ERROR, "Handle");
   int total_x = 0;
   int total_y = 0;
@@ -107,10 +111,12 @@ void accel_data_handler(AccelData *data, uint32_t num_samples) {
           
           APP_LOG(APP_LOG_LEVEL_ERROR, "Sending");
 	      // Send the message!
+            
+          vibes_short_pulse(void);
 	      app_message_outbox_send();
 	      
 	    }
-	}
+	//}
        
     }
 }

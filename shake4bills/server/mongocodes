@@ -1,0 +1,31 @@
+/*
+ * Welcome to JSApp.US
+ * ctrl-b to run the current code on the server
+ * ctrl-l to login/make a new user
+ * ctrl-h for help
+ *
+ * For more command check out the command window at the bottom
+ * commands: test login/logout newuser new save open ls deploy
+ */
+
+var http = require('http');
+var mongojs = require('mongojs');
+var uri = "mongodb://argofuckyourself:argofuckyourself@ds033153.mongolab.com:33153/helloworld"
+var db = mongojs.connect(uri, ["get_reqs","give_reqs"]);
+
+var minutes = 5, the_interval = minutes * 60 * 1000;
+setInterval(timerHandler, the_interval);
+
+def timerHandler() {
+  var cursor = db.get_requests.find();
+  var gets = cursor.toArray();
+  for (i=0; i<gets.length;i++) {
+      var doc = gets[i];
+      
+  }
+}
+
+http.createServer(function (req, res) {
+  res.writeHead(200, {'Content-Type': 'text/plain'});
+  res.end('Hello World\n');
+}).listen();
