@@ -1,0 +1,27 @@
+{
+    "appKeys": {
+        "location": 0,
+        "money": 1,
+        "timestamp": 2
+        },
+    "capabilities": [
+        "location"
+    ],
+    "companyName": "bnarayanaswami@scu.edu",
+    "longName": "shake4bills",
+    "projectType": "native",
+    "resources": {
+        "media": []
+    },
+    "sdkVersion": "3",
+    "shortName": "shake4bills",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
+    "uuid": "7f22920b-277a-4ad9-8f85-489341d221f8",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}
