@@ -38,18 +38,16 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
   APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
 }
 
-// Open AppMessage
-app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
 
 
 tatic void init(void) {
-  //window = window_create();
-  //window_set_background_color(window, GColorWhite);
-  //window_set_fullscreen(window, true);
-  //window_set_window_handlers(window, (WindowHandlers) {
-  //    .load = window_load,
-  // .unload = window_unload
-  //	});
+  window = window_create();
+  window_set_background_color(window, GColorWhite);
+  window_set_fullscreen(window, true);
+  window_set_window_handlers(window, (WindowHandlers) {
+    .load = window_load,
+    .unload = window_unload
+  	});
  
   // window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
  
@@ -78,7 +76,7 @@ tatic void init(void) {
   //tick_timer_service_subscribe(SECOND_UNIT, &handle_tick);
   accel_service_set_sampling_rate(ACCEL_SAMPLING_10HZ);
  
-  //window_stack_push(window, animated);
+  window_stack_push(window, animated);
 }
 
 void accel_data_handler(AccelData *data, uint32_t num_samples) {
@@ -137,7 +135,7 @@ void accel_data_handler(AccelData *data, uint32_t num_samples) {
 }
 
 static void deinit(void) {
-  //window_destroy(window);
+  window_destroy(window);
 }
 
 

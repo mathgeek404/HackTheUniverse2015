@@ -22,6 +22,26 @@ enum ShakeKeys {
 };
  
 
+static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+
+}
+
+static void inbox_dropped_callback(AppMessageResult reason, void *context) {
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped!");
+}
+
+static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason, void *context) {
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Outbox send failed!");
+}
+
+static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
+  APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
+}
+
+// Open AppMessage
+app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+
+
 tatic void init(void) {
   //window = window_create();
   //window_set_background_color(window, GColorWhite);
@@ -45,6 +65,12 @@ tatic void init(void) {
   tap_handshake = false;
  
   //createPopup();
+
+  // Register callbacks
+  app_message_register_inbox_received(inbox_received_callback);
+  app_message_register_inbox_dropped(inbox_dropped_callback);
+  app_message_register_outbox_failed(outbox_failed_callback);
+  app_message_register_outbox_sent(outbox_sent_callback);
  
   accel_service_set_samples_per_update(25);
   accel_data_service_subscribe(25, &accel_data_handler);
@@ -94,6 +120,15 @@ void accel_data_handler(AccelData *data, uint32_t num_samples) {
 	  if ( (int) avg_z < 200)
 	    {
 	      APP_LOG(APP_LOG_LEVEL_ERROR, "accel data detected!!");
+	      // Begin dictionary
+	      DictionaryIterator *iter;
+	      app_message_outbox_begin(&iter);
+
+	      // Add a key-value pair
+	      dict_write_uint8(iter, 0, 0);
+
+	      // Send the message!
+	      app_message_outbox_send();
 	      
 	    }
 	}
