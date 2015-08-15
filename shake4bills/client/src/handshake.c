@@ -40,7 +40,7 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 
 
 
-tatic void init(void) {
+static void init(void) {
   window = window_create();
   window_set_background_color(window, GColorWhite);
   window_set_fullscreen(window, true);
