@@ -1,8 +1,9 @@
 #include "pebble.h"
+#include<stdio.h>
  
 static Window *window;
  
-static TextLayer *name_layer;
+static TextLayer *money_layer;
 static TextLayer *phone_layer;
 static BitmapLayer *icon_layer;
 static TextLayer *resp_y_layer;
@@ -14,13 +15,16 @@ static uint8_t sync_buffer[64];
  
 bool data_handshake;
 bool tap_handshake;
+
+float payment_size;
  
 enum ShakeKeys {
   ID_KEY = 0x0,         // TUPLE_INT
   NAME_KEY = 0x1,  // TUPLE_CSTRING
  PHONE_KEY = 0x2
 };
- 
+
+
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
 
@@ -39,19 +43,68 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
 }
 
 
+void accel_data_handler(AccelData *data, uint32_t num_samples);
+
+
+// Money WatchFace Window
+static void window_money_load(Window *window) {
+  // Create time TextLayer
+  money_layer = text_layer_create(GRect(0, 55, 144, 50));
+  text_layer_set_background_color(money_layer, GColorClear);
+  text_layer_set_text_color(money_layer, GColorBlack);
+    
+  char *str = malloc(20);
+  snprintf(str, sizeof(str), "$%d.%02d", (int)payment_size, (int)(payment_size*100)%100);
+  text_layer_set_text(money_layer, str);
+
+  // Improve the layout to be more like a watchface
+  text_layer_set_font(money_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
+  text_layer_set_text_alignment(money_layer, GTextAlignmentCenter);
+
+  // Add it as a child layer to the Window's root layer
+  layer_add_child(window_get_root_layer(window), text_layer_get_layer(money_layer));
+}
+
+
+static void window_money_unload(Window *window) {
+    text_layer_destroy(money_layer);
+}
+
+static void up_click_payment_handler(ClickRecognizerRef recognizer, void *context) {
+    APP_LOG(APP_LOG_LEVEL_ERROR, "CLICKUP");
+    payment_size += 1.00;
+    char *str = malloc(20);
+    snprintf(str, sizeof(str), "$%d.%02d", (int)payment_size, (int)(payment_size*100)%100);
+    text_layer_set_text(money_layer, str);
+}
+
+static void select_click_payment_handler(ClickRecognizerRef recognizer, void *context) {
+  text_layer_set_text(money_layer, "Select pressed!");
+}
+
+static void down_click_payment_handler(ClickRecognizerRef recognizer, void *context) {
+  payment_size -= 1.00;
+  char *str = malloc(20);
+  snprintf(str, sizeof(str), "$%d.%02d", (int)payment_size, (int)(payment_size*100)%100);
+  text_layer_set_text(money_layer, str);
+}
+
+static void click_config_provider(void *context) {
+  // Register the ClickHandlers
+  window_single_click_subscribe(BUTTON_ID_UP, up_click_payment_handler);
+  window_single_click_subscribe(BUTTON_ID_DOWN, down_click_payment_handler);
+}
+
 
 static void init(void) {
   window = window_create();
   window_set_background_color(window, GColorWhite);
-  window_set_fullscreen(window, true);
+  //window_set_fullscreen(window, true);
   window_set_window_handlers(window, (WindowHandlers) {
-    .load = window_load,
-    .unload = window_unload
-  	});
- 
-  // window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
- 
-  //window_set_click_config_provider(window, &click_config_provider);
+    .load = window_money_load,
+    .unload = window_money_unload
+  	}); 
+  window_set_click_config_provider(window, &click_config_provider);
  
   const int inbound_size = 64;
   const int outbound_size = 64;
@@ -61,6 +114,8 @@ static void init(void) {
  
   data_handshake = true;
   tap_handshake = false;
+    
+  payment_size = 5.00;
  
   //createPopup();
 
