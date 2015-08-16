@@ -5,12 +5,12 @@ var blockchain = require('blockchain.info');
 var qs = require('querystring');
 var url = require('url');
 var mongoose = require("mongoose");
-var lat, lon, t, d;
+var lat, lon, t, d, ID, address, pwd;
 
 mongoose.connect('mongodb://localhost/test');
 
-var giveRecord = mongoose.model('coll_give', {lat: Number, lon: Number, time: String}, 'coll_give');
-var getRecord = mongoose.model('coll_receive', {lat: Number, lon: Number, time: String}, 'coll_receive');
+var giveRecord = mongoose.model('coll_give', {ID: String, lat: Number, lon: Number, time: Number, address: String, password: String }, 'coll_give');
+var getRecord = mongoose.model('coll_receive', {lat: Number, lon: Number, time: Number, address: String}, 'coll_receive');
 
 // var transaction;
 
@@ -32,9 +32,9 @@ app.get("/", function(req, res){
 	res.send("<h1>Hello PebblePay</h1>");
 	var request = require('request');
 
-	request('https://blockchain.info/merchant/92e01fc7-8111-422d-b408-45d87ea9f343/balance?password=passwordpassword', function (error, response, body) {
+	/*request('https://blockchain.info/merchant/92e01fc7-8111-422d-b408-45d87ea9f343/balance?password=passwordpassword', function (error, response, body) {
 	  console.log("Balance: " + JSON.parse(body).balance);
-	});
+	});*/
 	
 	request('https://blockchain.info/merchant/92e01fc7-8111-422d-b408-45d87ea9f343/payment?password=passwordpassword&address=12bFNtivVbnNWoNqZfXFJcsAHiLG4e7wox&amount=10000&from=158C4z7bSXdZnFqNtm7Ga7UDZ8aHongsFJ&fee=10000');
 
@@ -56,10 +56,17 @@ app.post("/give", function(req, res){
 		d = new Date(0); // The 0 there is the key, which sets the date to the epoch
 		d.setUTCSeconds(t / 1000);
 		//console.log(d);
+		ID = JSON.parse(body).identifier;
+		address = JSON.parse(body).address;
+		pwd = JSON.parse(body).password;
+
 	var newGiveRecord = new giveRecord({
+		"ID": ID,
 		"lat": lat,
 		"lon": lon,
-		"time": t
+		"time": t,
+		"address": address,
+		"password": pwd
 	});
 	newGiveRecord.save();
 	});
@@ -81,11 +88,14 @@ app.post("/receive", function(req, res){
 		t = JSON.parse(body).time;
 		d = new Date(0); // The 0 there is the key, which sets the date to the epoch
 		d.setUTCSeconds(t / 1000);
+		address = JSON.parse(body).address;
 		//console.log(d);
 	var newReceiveRecord = new getRecord({
 		"lat": lat,
 		"lon": lon,
-		"time": t
+		"time": t,
+		"address": address
+
 	});
 	newReceiveRecord.save();
 	});
