@@ -120,11 +120,10 @@ void accel_data_handler(AccelData *data, uint32_t num_samples) {
 	      // Send the message!
             
           if (sendMoney) {
-            send_int(0,0);
             send_int(1,(int)(payment_size*100));
           }
           else {
-            send_int(0,1);
+            send_int(0,0);
           }
           vibes_short_pulse();
           payment_size = 5.00;
@@ -151,7 +150,7 @@ static void window_menu_load(Window *window) {
   text_layer_set_text(menu_layer,"Welcome!");
 
   // Improve the layout to be more like a watchface
-  text_layer_set_font(menu_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
+  text_layer_set_font(menu_layer, fonts_get_system_font(FONT_KEY_DROID_28_BOLD));
   text_layer_set_text_alignment(menu_layer, GTextAlignmentCenter);
 
   // Add it as a child layer to the Window's root layer
