@@ -1,3 +1,5 @@
+'use strict';
+
 var express = require("express");
 var app = express();
 var http = require("http").Server(app);
@@ -5,12 +7,60 @@ var blockchain = require('blockchain.info');
 var qs = require('querystring');
 var url = require('url');
 var mongoose = require("mongoose");
-var lat, lon, t, d, ID, address, pwd;
+var lat, lon, t, d, ID, address, pwd,amount;
 
+/*var braintree = require('braintree');
+
+var bodyParser = require('body-parser');
+var parseUrlEnconded = bodyParser.urlencoded({
+  extended: false
+});
+
+var isBitcoin = true;
+if(!isBitcoin){
+var gateway = braintree.connect({
+    environment:  braintree.Environment.Sandbox,
+    merchantId:   'q3d8kvb5s559cyvt',
+    publicKey:    '27h27ht5nc4tpv36',
+    privateKey:   'e96ee18c7eb2a7b983038045fb0fb7b1'
+});
+app.use(express.static('public'));
+
+app.get('/', function (request, response) {
+
+  gateway.clientToken.generate({}, function (err, res) {
+    response.render('index', {
+      clientToken: res.clientToken
+    });
+  });
+
+});
+
+app.post('/process', parseUrlEnconded, function (request, response) {
+
+  var transaction = request.body;
+  var amt = JSON.parse(transaction).amount;
+  var pm = JSON.parse(transaction).payment_method_nonce;
+  gateway.transaction.sale({
+    amount: amt,
+    paymentMethodNonce: pm 
+  }, function (err, result) {
+
+    if (err) throw err;
+
+    if (result.success) {
+
+      console.log(result);
+    } 
+  });
+
+});
+}
+*/
 mongoose.connect('mongodb://localhost/test');
 
-var giveRecord = mongoose.model('coll_give', {ID: String, lat: Number, lon: Number, time: Number, address: String, password: String }, 'coll_give');
-var getRecord = mongoose.model('coll_receive', {lat: Number, lon: Number, time: Number, address: String}, 'coll_receive');
+var giveRecord = mongoose.model('coll_give', {ID: String, lat: Number, lon: Number, time: Number, address: String, password: String, amount: Number }, 'coll_give');
+var getRecord = mongoose.model('coll_receive', {lat: Number, lon: Number, time: Number, address: String }, 'coll_receive');
 
 // var transaction;
 
@@ -47,26 +97,24 @@ app.post("/give", function(req, res){
 	req.on('data', function(data) {
 	    body += data.toString(); // convert data to string and append it to request body
 	});
-	
+	console.log(body);
 	req.on('end', function() {
 	    console.log(JSON.parse(body)); // request is finished receiving data, parse it
 		lat = JSON.parse(body).lat;
 		lon = JSON.parse(body).lon;
-		t = JSON.parse(body).time;
-		d = new Date(0); // The 0 there is the key, which sets the date to the epoch
-		d.setUTCSeconds(t / 1000);
-		//console.log(d);
 		ID = JSON.parse(body).identifier;
 		address = JSON.parse(body).address;
 		pwd = JSON.parse(body).password;
+		amount = JSON.parse(body).amount;
 
 	var newGiveRecord = new giveRecord({
 		"ID": ID,
 		"lat": lat,
 		"lon": lon,
-		"time": t,
+		"time": Date.now(),
 		"address": address,
-		"password": pwd
+		"password": pwd,
+		"amount": amount
 	});
 	newGiveRecord.save();
 	});
@@ -85,15 +133,11 @@ app.post("/receive", function(req, res){
 	    console.log(JSON.parse(body)); // request is finished receiving data, parse it
 		lat = JSON.parse(body).lat;
 		lon = JSON.parse(body).lon;
-		t = JSON.parse(body).time;
-		d = new Date(0); // The 0 there is the key, which sets the date to the epoch
-		d.setUTCSeconds(t / 1000);
 		address = JSON.parse(body).address;
-		//console.log(d);
 	var newReceiveRecord = new getRecord({
 		"lat": lat,
 		"lon": lon,
-		"time": t,
+		"time": Date.now(),
 		"address": address
 
 	});
@@ -156,25 +200,25 @@ app.post("/receive", function(req, res){
  */
 
 var mongojs = require('mongojs');
-var uri = "argofuckyourself:argofuckyourself@ds033153.mongolab.com:33153/helloworld"
-var db = mongojs(uri, ["coll_get","coll_give"]);
+var uri = "mongodb://localhost/test"
+var db = mongojs(uri, ["coll_receive","coll_give"]);
 
 
 //Every couple of minutes, checks the get/give requests and cross checks possible transactions
-def timerHandler() {
+function timerHandler() {
+
   db.coll_give.find(function(err, give_docs) {
-      db.coll_get.find(function(err, get_docs) {
-          for (i=0;i<give_docs.length;i++) {
-            for (j=0;j<give_docs.length;j++) {
-                get = get_docs[i];
-                give = give_docs[j];
-                
-                if (Math.abs(parseInt(get["time"])-parseInt(give["time"]))<100) {  //Within timestep
+  	   db.coll_receive.find(function(err, get_docs) {
+  	   	 for (var i=0;i<get_docs.length;i++) {
+            for (var j=0;j<give_docs.length;j++) {
+                var get = get_docs[i];
+                var give = give_docs[j];
+                if (Math.abs(parseInt(get["time"])-parseInt(give["time"]))<10000) {  //Within timest
                 if ((Math.abs(parseFloat(get["lat"])-parseFloat(give["lat"]))<1) &&
-                        Math.abs(parseFloat(get["long"])-parseFloat(give["long"]))<1) {  //Within range
+                        Math.abs(parseFloat(get["lon"])-parseFloat(give["lon"]))<1) {  //
                     pass_payment(give,get);
-                    db.coll_get.remove(give, function(err,docs) {console.log(String(err));});
-                    db.coll_get.remove(get, function(err, docs) {console.log(String(err));});
+                    db.coll_give.remove(give, function(err,docs) {console.log(String(err));});
+                    db.coll_receive.remove(get, function(err, docs) {console.log(String(err));});
                 }
              } 
             }
@@ -183,14 +227,19 @@ def timerHandler() {
       });
   });  
 }
-var minutes = 5, the_interval = minutes * 60 * 1000;
+function pass_payment(give, get){
+	var request = require('request');
+	var btc_amount;
+	request('https://blockchain.info/tobtc?currency=USD&value='+give["amount"],function(error,res,body){
+		btc_amount = body;
+	});
+	//var btc_amount = 
+	var template = 'https://blockchain.info/merchant/'+give["ID"]+'/payment?password='+give["password"]+'&address='+get["address"]+'&amount='+btc_amount+'&from='+give["address"]+'&fee=10000';
+	
+	request(template);
+}
+var minutes = 0.01, the_interval = minutes * 60 * 1000;
 setInterval(timerHandler, the_interval);
-
-http.createServer(function (req, res) {
-  res.writeHead(200, {'Content-Type': 'text/plain'});
-  res.end('Hello World\n');
-}).listen();
-
 
 http.listen(80, function(){
 	console.log("Listening on *:80");
