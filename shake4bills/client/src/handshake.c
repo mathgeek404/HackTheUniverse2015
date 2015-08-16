@@ -2,9 +2,9 @@
 #include<stdio.h>
  
 static Window *window;
- 
+
+static TextLayer *menu_layer;
 static TextLayer *money_layer;
-static TextLayer *phone_layer;
 static BitmapLayer *icon_layer;
 static TextLayer *resp_y_layer;
  
@@ -14,7 +14,8 @@ static AppSync sync;
 static uint8_t sync_buffer[64];
  
 bool data_handshake;
-bool tap_handshake;
+bool welcomeMenu;
+bool sendMoney;
 
 float payment_size;
  
@@ -27,8 +28,6 @@ enum ShakeKeys {
 
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
-    
-
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
@@ -43,6 +42,14 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
   APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
 }
 
+static void send_int(int key, int value) {
+    DictionaryIterator *iter;
+    app_message_outbox_begin(&iter);
+    dict_write_int(iter, key, &value, sizeof(int), true);
+    app_message_outbox_send();
+}
+
+static void destroy_money_layer();
 
 void accel_data_handler(AccelData *data, uint32_t num_samples) {
   // Process 10 events - every 1 second
@@ -112,20 +119,55 @@ void accel_data_handler(AccelData *data, uint32_t num_samples) {
           APP_LOG(APP_LOG_LEVEL_ERROR, "Sending");
 	      // Send the message!
             
+          if (sendMoney) {
+            send_int(0,0);
+            send_int(1,(int)(payment_size*100));
+          }
+          else {
+            send_int(0,1);
+          }
           vibes_short_pulse();
-	      app_message_outbox_send();
-	      
+          payment_size = 5.00;
+	      destroy_money_layer();
 	    }
 	//}
        
     }
 }
 
+void init_accel() {
+  accel_service_set_samples_per_update(10);
+  accel_service_set_sampling_rate(ACCEL_SAMPLING_10HZ);
+  accel_data_service_subscribe(10, accel_data_handler);
+  //accel_tap_service_subscribe(&accel_tap_handler);
+  //tick_timer_service_subscribe(SECOND_UNIT, &handle_tick);
+}
+
+static void window_menu_load(Window *window) {
+  menu_layer = text_layer_create(GRect(0, 55, 144, 50));
+  text_layer_set_background_color(menu_layer, GColorClear);
+  text_layer_set_text_color(menu_layer, GColorBlack);
+    
+  text_layer_set_text(menu_layer,"Welcome!");
+
+  // Improve the layout to be more like a watchface
+  text_layer_set_font(menu_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
+  text_layer_set_text_alignment(menu_layer, GTextAlignmentCenter);
+
+  // Add it as a child layer to the Window's root layer
+  layer_add_child(window_get_root_layer(window), text_layer_get_layer(menu_layer));
+  welcomeMenu = true;
+}
+
+static void window_menu_unload(Window *window) {
+    layer_remove_from_parent(text_layer_get_layer(menu_layer));  
+}
 
 
 // Money WatchFace Window
-static void window_money_load(Window *window) {
-  // Create time TextLayer
+static void build_send_layer() {
+    
+    // Create time TextLayer
   money_layer = text_layer_create(GRect(0, 55, 144, 50));
   text_layer_set_background_color(money_layer, GColorClear);
   text_layer_set_text_color(money_layer, GColorBlack);
@@ -140,14 +182,39 @@ static void window_money_load(Window *window) {
 
   // Add it as a child layer to the Window's root layer
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(money_layer));
+  init_accel();
+    
+  sendMoney = true;
+}
+
+// Money WatchFace Window
+static void build_get_layer() {
+  // Create time TextLayer
+  money_layer = text_layer_create(GRect(0, 55, 144, 50));
+  text_layer_set_background_color(money_layer, GColorClear);
+  text_layer_set_text_color(money_layer, GColorBlack);
+ 
+  text_layer_set_text(money_layer,"Getting Money");
+
+  // Improve the layout to be more like a watchface
+  text_layer_set_font(money_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
+  text_layer_set_text_alignment(money_layer, GTextAlignmentCenter);
+
+  // Add it as a child layer to the Window's root layer
+  layer_add_child(window_get_root_layer(window), text_layer_get_layer(money_layer));
+  init_accel();
 }
 
 
-static void window_money_unload(Window *window) {
-    text_layer_destroy(money_layer);
+static void destroy_money_layer() {
+    layer_remove_from_parent(text_layer_get_layer(money_layer));
+    layer_set_hidden(text_layer_get_layer(menu_layer),false);
+    accel_data_service_unsubscribe();
+    sendMoney = false;
+    welcomeMenu = true;
 }
 
-static void up_click_payment_handler(ClickRecognizerRef recognizer, void *context) {
+static void up_click_payment_handler() {
     APP_LOG(APP_LOG_LEVEL_ERROR, "CLICKUP");
     payment_size += 1.00;
     char *str = malloc(20);
@@ -159,17 +226,40 @@ static void select_click_payment_handler(ClickRecognizerRef recognizer, void *co
   text_layer_set_text(money_layer, "Select pressed!");
 }
 
-static void down_click_payment_handler(ClickRecognizerRef recognizer, void *context) {
+static void down_click_payment_handler() {
   payment_size -= 1.00;
   char *str = malloc(20);
   snprintf(str, sizeof(str), "$%d.00", (int)payment_size); //, (int)(payment_size*100)%100
   text_layer_set_text(money_layer, str);
 }
 
+static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
+    if(welcomeMenu) {
+        layer_set_hidden(text_layer_get_layer(menu_layer),true);
+        build_send_layer();
+        welcomeMenu = false;
+    }
+    else if (sendMoney) {
+        up_click_payment_handler();
+    }
+    
+}
+
+static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
+    if(welcomeMenu) {
+        layer_set_hidden(text_layer_get_layer(menu_layer),true);
+        build_get_layer();
+        welcomeMenu = false;
+    }
+    else if (sendMoney) {
+        down_click_payment_handler();
+    }
+}
+
 static void click_config_provider(void *context) {
   // Register the ClickHandlers
-  window_single_click_subscribe(BUTTON_ID_UP, up_click_payment_handler);
-  window_single_click_subscribe(BUTTON_ID_DOWN, down_click_payment_handler);
+  window_single_click_subscribe(BUTTON_ID_UP, up_click_handler);
+  window_single_click_subscribe(BUTTON_ID_DOWN, down_click_handler);
 }
 
 
@@ -178,8 +268,8 @@ static void init(void) {
   window_set_background_color(window, GColorWhite);
   //window_set_fullscreen(window, true);
   window_set_window_handlers(window, (WindowHandlers) {
-    .load = window_money_load,
-    .unload = window_money_unload
+    .load = window_menu_load,
+    .unload = window_menu_unload
   	}); 
   window_set_click_config_provider(window, &click_config_provider);
  
@@ -188,27 +278,14 @@ static void init(void) {
   app_message_open(inbound_size, outbound_size);
  
   const bool animated = true;
- 
   data_handshake = true;
-  tap_handshake = false;
-    
   payment_size = 5.00;
- 
-  //createPopup();
-    
-    
 
   // Register callbacks
   app_message_register_inbox_received(inbox_received_callback);
   app_message_register_inbox_dropped(inbox_dropped_callback);
   app_message_register_outbox_failed(outbox_failed_callback);
   app_message_register_outbox_sent(outbox_sent_callback);
- 
-  accel_service_set_samples_per_update(10);
-  accel_service_set_sampling_rate(ACCEL_SAMPLING_10HZ);
-  accel_data_service_subscribe(10, accel_data_handler);
-  //accel_tap_service_subscribe(&accel_tap_handler);
-  //tick_timer_service_subscribe(SECOND_UNIT, &handle_tick);
     
   window_stack_push(window, animated);
 }

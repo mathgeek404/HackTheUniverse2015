@@ -159,7 +159,7 @@ def timerHandler() {
                 get = get_docs[i];
                 give = give_docs[j];
                 
-                if (Math.abs(parseInt(get["time"])-parseInt(give["time"]))<10) {  //Within timestep
+                if (Math.abs(parseInt(get["time"])-parseInt(give["time"]))<100) {  //Within timestep
                 if ((Math.abs(parseFloat(get["lat"])-parseFloat(give["lat"]))<1) &&
                         Math.abs(parseFloat(get["long"])-parseFloat(give["long"]))<1) {  //Within range
                     pass_payment(give,get);
