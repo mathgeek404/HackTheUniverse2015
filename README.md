@@ -1,1 +1,2 @@
-Group hack for Hack the Planet 2015
+Shake hands with someone to make a monetary transaction. 
+Made using Pebble and Blockchain API.
